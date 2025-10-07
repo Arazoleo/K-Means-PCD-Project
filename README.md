@@ -108,14 +108,6 @@ A paralelização do algoritmo K-means 1D com OpenMP demonstrou ser eficaz para 
 
 Os resultados obtidos estão alinhados com a teoria de computação paralela, onde o ganho de desempenho é proporcional ao tamanho do problema e limitado por fatores como overhead de sincronização, seções críticas e limitações de hardware.
 
-## Próximos Passos
-
-Para melhorar ainda mais o desempenho, as seguintes otimizações podem ser consideradas:
-
-1. **Reduzir seções críticas:** Utilizar operações atômicas ou técnicas de redução mais eficientes na função `update_step_1d`.
-2. **Ajustar o scheduling:** Testar diferentes políticas de escalonamento (`static`, `dynamic`, `guided`) e tamanhos de chunk.
-3. **Implementar versões CUDA e MPI:** Conforme proposto no projeto, para explorar paralelismo em GPU e ambientes distribuídos.
-4. **Otimizar localidade de dados:** Reorganizar estruturas de dados para melhorar o uso de cache.
 
 ## Arquivos Gerados
 
