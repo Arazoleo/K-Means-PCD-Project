@@ -1,0 +1,12 @@
+# Binários/objetos
+kmeans_1d_*
+*.o
+
+# macOS
+.DS_Store
+
+# Dados gerados (use o generate_datasets.py)
+*.csv
+
+# Imagens grandes geradas
+performance_analysis.png
