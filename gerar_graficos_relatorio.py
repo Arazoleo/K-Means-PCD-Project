@@ -45,7 +45,7 @@ plt.grid(True, alpha=0.3, linestyle='--')
 plt.yscale('log')
 plt.tight_layout()
 plt.savefig('grafico_tempo.png', dpi=300, bbox_inches='tight')
-print("✓ Gráfico 1 salvo: grafico_tempo.png")
+print("Gráfico 1 salvo: grafico_tempo.png")
 plt.close()
 
 plt.figure(figsize=(12, 8))
