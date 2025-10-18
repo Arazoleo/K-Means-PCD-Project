@@ -5,7 +5,6 @@
 #include <time.h>
 #include <omp.h>
 
-/* ---------- util CSV 1D: cada linha tem 1 número ---------- */
 static int count_rows(const char *path){
     FILE *f = fopen(path, "r");
     if(!f){ fprintf(stderr,"Erro ao abrir %s\n", path); exit(1); }
@@ -39,7 +38,6 @@ static double *read_csv_1col(const char *path, int *n_out){
         }
         if(only_ws) continue;
 
-        /* aceita vírgula/ponto-e-vírgula/espaco/tab, pega o primeiro token numérico */
         const char *delim = ",; \t";
         char *tok = strtok(line, delim);
         if(!tok){ fprintf(stderr,"Linha %d sem valor em %s\n", r+1, path); free(A); fclose(f); exit(1); }
@@ -68,8 +66,6 @@ static void write_centroids_csv(const char *path, const double *C, int K){
     fclose(f);
 }
 
-/* ---------- k-means 1D com OpenMP ---------- */
-/* assignment: para cada X[i], encontra c com menor (X[i]-C[c])^2 */
 static double assignment_step_1d(const double *X, const double *C, int *assign, int N, int K){
     double sse = 0.0;
     #pragma omp parallel for reduction(+:sse)
@@ -87,8 +83,6 @@ static double assignment_step_1d(const double *X, const double *C, int *assign, 
     return sse;
 }
 
-/* update: média dos pontos de cada cluster (1D)
-   se cluster vazio, copia X[0] (estratégia naive) */
 static void update_step_1d(const double *X, double *C, const int *assign, int N, int K){
     double *sum = (double*)calloc((size_t)K, sizeof(double));
     int *cnt = (int*)calloc((size_t)K, sizeof(int));
@@ -120,7 +114,7 @@ static void update_step_1d(const double *X, double *C, const int *assign, int N,
 
     for(int c=0;c<K;c++){
         if(cnt[c] > 0) C[c] = sum[c] / (double)cnt[c];
-        else           C[c] = X[0]; /* simples: cluster vazio recebe o primeiro ponto */
+        else           C[c] = X[0];
     }
     free(sum); free(cnt);
 }
@@ -134,7 +128,6 @@ static void kmeans_1d(const double *X, double *C, int *assign,
     int it;
     for(it=0; it<max_iter; it++){
         sse = assignment_step_1d(X, C, assign, N, K);
-        /* parada por variação relativa do SSE */
         double rel = fabs(sse - prev_sse) / (prev_sse > 0.0 ? prev_sse : 1.0);
         if(rel < eps){ it++; break; }
         update_step_1d(X, C, assign, N, K);
@@ -144,7 +137,6 @@ static void kmeans_1d(const double *X, double *C, int *assign,
     *sse_out = sse;
 }
 
-/* ---------- main ---------- */
 int main(int argc, char **argv){
     if(argc < 3){
         printf("Uso: %s dados.csv centroides_iniciais.csv [max_iter=50] [eps=1e-4] [assign.csv] [centroids.csv]\n", argv[0]);

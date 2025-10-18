@@ -1,0 +1,46 @@
+# Datasets CSV (compartilhados)
+dados_*.csv
+centroides_*.csv
+
+# Executáveis C
+kmeans_1d_serial
+kmeans_1d_omp
+*.o
+*.out
+
+# Arquivos Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Ambientes virtuais
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Imagens de resultados
+*.png
+*.jpg
+*.jpeg
+
+# LaTeX
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+

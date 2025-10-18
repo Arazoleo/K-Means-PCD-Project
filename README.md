@@ -1,158 +1,143 @@
-# K-means 1D com OpenMP - Guia de Compilação e Execução
+# K-Means 1D - Implementação Serial e OpenMP
 
-## 🚀 Compilação Rápida
+Implementação do algoritmo K-means unidimensional com versões serial e paralela OpenMP.
 
+## Estrutura do Projeto
 
-### Compilação
-```bash
-# Navegue para a pasta do projeto
-cd /Users/arazoleonardo/Downloads/kmeans_openmp_results/openMp
-
-# Compilar versão serial
-/opt/homebrew/bin/gcc-15 -O2 -std=c99 method_means_1d_serial.c -o kmeans_1d_serial -lm
-
-# Compilar versão OpenMP
-/opt/homebrew/bin/gcc-15 -O2 -fopenmp -std=c99 method_means_1d_omp.c -o kmeans_1d_omp -lm
+```
+K-Means-PCD-Project/
+├── generate_datasets.py
+├── run_all_tests.sh
+├── README.md
+├── serial/
+│   ├── method_means_1d_serial.c
+│   ├── analyze_results.py
+│   ├── run_tests.sh
+│   └── README.md
+└── openmp/
+    ├── method_means_1d_omp.c
+    ├── analyze_results.py
+    ├── run_tests.sh
+    └── README.md
 ```
 
-## 📊 Execução dos Testes
+## Requisitos
 
-### Teste Automatizado Completo
+- GCC com suporte a OpenMP
+- Python 3 com numpy e matplotlib
+
+### Instalação no macOS
+
 ```bash
-# Executa todos os testes (serial + OpenMP com 1,2,4,8,16 threads)
+brew install gcc python3
+pip3 install numpy matplotlib
+```
+
+### Instalação no Linux
+
+```bash
+sudo apt-get install gcc python3 python3-pip
+pip3 install numpy matplotlib
+```
+
+## Como Executar
+
+### Execução Completa
+
+Na raiz do projeto:
+
+```bash
+bash run_all_tests.sh
+```
+
+Este script executa:
+1. Geração de datasets (se não existirem)
+2. Compilação das versões serial e OpenMP
+3. Criação de links simbólicos para datasets
+4. Testes da versão serial nos 3 datasets
+5. Testes da versão OpenMP com 1, 2, 4, 8 e 16 threads nos 3 datasets
+
+### Geração Manual de Datasets
+
+```bash
+python3 generate_datasets.py
+```
+
+Gera três datasets:
+- dados_pequeno.csv: N=10.000 pontos, K=4 clusters
+- dados_medio.csv: N=100.000 pontos, K=8 clusters
+- dados_grande.csv: N=1.000.000 pontos, K=16 clusters
+
+### Execução Individual por Versão
+
+#### Versão Serial
+
+```bash
+cd serial
 bash run_tests.sh
+python3 analyze_results.py
 ```
 
-### Teste Manual Individual
+#### Versão OpenMP
+
 ```bash
-# Teste serial
-./kmeans_1d_serial dados_pequeno.csv centroides_pequeno.csv 50 0.000001 assign_serial.csv centroids_serial.csv
-
-# Teste OpenMP (4 threads)
-export OMP_NUM_THREADS=4
-./kmeans_1d_omp dados_pequeno.csv centroides_pequeno.csv 50 0.000001 assign_omp4.csv centroids_omp4.csv
+cd openmp
+bash run_tests.sh
+python3 analyze_results.py
 ```
 
-## 📁 Arquivos de Saída
+## Compilação Manual
 
-Cada execução gera **2 arquivos obrigatórios**:
+### Serial
 
-### 1. `assign_[versao]_[dataset].csv`
-- **N linhas** (uma por ponto)
-- **Conteúdo**: Índice do cluster (0, 1, 2, ..., K-1)
-- **Exemplo**: 
+```bash
+cd serial
+gcc -O2 -std=c99 method_means_1d_serial.c -o kmeans_1d_serial -lm
+```
+
+### OpenMP
+
+```bash
+cd openmp
+gcc -O2 -fopenmp -std=c99 method_means_1d_omp.c -o kmeans_1d_omp -lm
+```
+
+## Formato dos Arquivos
+
+Todos os CSV têm uma coluna, sem cabeçalho.
+
+Entrada:
+```
+1.234567
+2.345678
+3.456789
+```
+
+Saída (assign.csv):
 ```
 0
 1
 0
-2
-1
 ```
 
-### 2. `centroids_[versao]_[dataset].csv`
-- **K linhas** (uma por cluster)
-- **Conteúdo**: Coordenada final do centróide
-- **Exemplo**:
+Saída (centroids.csv):
 ```
 15.234567
 25.123456
-35.456789
-45.789012
 ```
 
-## 🔍 Como Conferir os Resultados
+## Algoritmo
 
-### 1. Verificar Saída no Terminal
-Cada execução mostra:
-```
-Iterações: 5
-SSE final: 399.263
-Tempo total: 1.6 ms
-```
+### Assignment Step
+Para cada ponto, encontra o centróide mais próximo.
 
-### 2. Validar Arquivos de Saída
-```bash
-# Verificar número de linhas (deve ser igual ao número de pontos)
-wc -l assign_serial_pequeno.csv
-# Saída esperada: 10000 assign_serial_pequeno.csv
+### Update Step
+Calcula a média dos pontos de cada cluster.
+Clusters vazios recebem o primeiro ponto.
 
-# Verificar centróides finais
-cat centroids_serial_pequeno.csv
-```
 
-### 3. Comparar Resultados Entre Versões
-```bash
-# Verificar se SSE é igual entre versões (validação de corretude)
-grep "SSE final" test_results_fixed.txt
+## Paralelização OpenMP
 
-# Comparar centróides finais (devem ser idênticos)
-diff centroids_serial_pequeno.csv centroids_omp4_pequeno.csv
-```
+- Assignment: `#pragma omp parallel for reduction(+:sse)`
+- Update: acumuladores locais por thread com redução crítica
 
-## 📈 Análise de Desempenho
-
-### Gerar Gráficos
-```bash
-python3 analyze_results.py
-```
-**Saída**: `performance_analysis.png` com gráficos de tempo e speedup
-
-### Interpretar Resultados
-- **Speedup > 1.0**: Versão paralela é mais rápida
-- **Speedup < 1.0**: Overhead da paralelização prejudica desempenho
-- **SSE idêntico**: Validação de que resultados são corretos
-
-## 🎯 Resultados Esperados
-
-| Dataset | Melhor Configuração | Speedup Esperado |
-|---------|-------------------|------------------|
-| Pequeno (N=10K) | Serial | 1.00x |
-| Médio (N=100K) | 4 threads | ~2.3x |
-| Grande (N=1M) | 4 threads | ~3.9x |
-
-## 🛠️ Solução de Problemas
-
-### Erro: "unsupported option '-fopenmp'"
-```bash
-# Use o GCC do Homebrew em vez do Clang padrão
-/opt/homebrew/bin/gcc-15 --version
-```
-
-### Erro: "No such file or directory"
-```bash
-# Certifique-se de estar na pasta correta
-cd /Users/arazoleonardo/Downloads/kmeans_openmp_results/openMp
-ls -la *.csv *.c
-```
-
-### Arquivos de saída não gerados
-```bash
-# Verifique se os parâmetros estão corretos
-./kmeans_1d_serial dados_pequeno.csv centroides_pequeno.csv 50 0.000001 assign.csv centroids.csv
-```
-
-## 📋 Checklist de Validação
-
-- [ ] Compilação sem erros
-- [ ] Execução completa do `run_tests.sh`
-- [ ] Arquivos `assign_*.csv` gerados (N linhas cada)
-- [ ] Arquivos `centroids_*.csv` gerados (K linhas cada)
-- [ ] SSE idêntico entre versões serial e paralela
-- [ ] Speedup > 1.0 para datasets grandes
-- [ ] Gráfico `performance_analysis.png` gerado
-
-## 📁 Estrutura de Arquivos
-
-```
-openMp/
-├── method_means_1d_serial.c    # Código serial
-├── method_means_1d_omp.c       # Código OpenMP
-├── run_tests.sh                # Script de testes
-├── generate_datasets.py        # Gerador de dados
-├── analyze_results.py          # Análise e gráficos
-├── dados_*.csv                 # Datasets de entrada
-├── centroides_*.csv            # Centróides iniciais
-├── assign_*.csv                # Resultados: cluster por ponto
-├── centroids_*.csv             # Resultados: centróides finais
-└── performance_analysis.png    # Gráficos de desempenho
-```

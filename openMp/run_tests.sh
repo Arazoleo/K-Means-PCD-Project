@@ -45,8 +45,10 @@ if [ -z "$GCC" ]; then
 fi
 
 echo "======================================"
-echo "Usando compilador: $GCC"
+echo "K-means 1D - Testes Versão OpenMP"
 echo "======================================"
+echo "Usando compilador: $GCC"
+echo ""
 
 echo "Verificando suporte a OpenMP..."
 $GCC -fopenmp -dM -E - < /dev/null 2>/dev/null | grep -q "_OPENMP"
@@ -56,22 +58,15 @@ fi
 
 echo ""
 echo "======================================"
-echo "Compilando as versões..."
+echo "Compilando versão OpenMP..."
 echo "======================================"
-
-$GCC -O2 -std=c99 method_means_1d_serial.c -o kmeans_1d_serial -lm
-if [ $? -ne 0 ]; then
-    echo "Erro ao compilar versão serial!"
-    exit 1
-fi
-echo "✓ Versão serial compilada"
 
 $GCC -O2 -fopenmp -std=c99 method_means_1d_omp.c -o kmeans_1d_omp -lm
 if [ $? -ne 0 ]; then
     echo "Erro ao compilar versão OpenMP!"
     exit 1
 fi
-echo "✓ Versão OpenMP compilada"
+echo "Versão OpenMP compilada"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     NUM_CORES=$(sysctl -n hw.ncpu)
@@ -86,30 +81,21 @@ echo "Número de cores disponíveis: $NUM_CORES"
 
 echo ""
 echo "======================================"
-echo "Gerando datasets..."
+echo "Verificando datasets..."
 echo "======================================"
 
-# Verificar se os datasets já existem
 if [ ! -f "dados_pequeno.csv" ] || [ ! -f "dados_medio.csv" ] || [ ! -f "dados_grande.csv" ]; then
-    echo "Gerando datasets necessários..."
-    python3 generate_datasets.py
-    if [ $? -ne 0 ]; then
-        echo "Erro ao gerar datasets!"
-        exit 1
-    fi
-    echo "✓ Datasets gerados com sucesso"
-else
-    echo "✓ Datasets já existem, pulando geração"
+    echo "ERRO: Datasets não encontrados!"
+    echo "Execute primeiro na raiz do projeto: python3 generate_datasets.py"
+    echo "Ou execute: bash run_all_tests.sh"
+    exit 1
 fi
+echo "Datasets encontrados"
 
 echo ""
 echo "======================================"
-echo "Testando Dataset PEQUENO (N=10,000)"
+echo "Testando Dataset PEQUENO (N=10,000, K=4)"
 echo "======================================"
-
-echo ""
-echo "--- SERIAL ---"
-./kmeans_1d_serial dados_pequeno.csv centroides_pequeno.csv 50 0.000001 assign_serial_pequeno.csv centroids_serial_pequeno.csv
 
 echo ""
 echo "--- OpenMP (1 thread) ---"
@@ -138,12 +124,8 @@ export OMP_NUM_THREADS=16
 
 echo ""
 echo "======================================"
-echo "Testando Dataset MÉDIO (N=100,000)"
+echo "Testando Dataset MÉDIO (N=100,000, K=8)"
 echo "======================================"
-
-echo ""
-echo "--- SERIAL ---"
-./kmeans_1d_serial dados_medio.csv centroides_medio.csv 50 0.000001 assign_serial_medio.csv centroids_serial_medio.csv
 
 echo ""
 echo "--- OpenMP (1 thread) ---"
@@ -172,12 +154,8 @@ export OMP_NUM_THREADS=16
 
 echo ""
 echo "======================================"
-echo "Testando Dataset GRANDE (N=1,000,000)"
+echo "Testando Dataset GRANDE (N=1,000,000, K=16)"
 echo "======================================"
-
-echo ""
-echo "--- SERIAL ---"
-./kmeans_1d_serial dados_grande.csv centroides_grande.csv 50 0.000001 assign_serial_grande.csv centroids_serial_grande.csv
 
 echo ""
 echo "--- OpenMP (1 thread) ---"
@@ -208,3 +186,10 @@ echo ""
 echo "======================================"
 echo "Testes concluídos!"
 echo "======================================"
+echo ""
+echo "Arquivos gerados:"
+echo "  - assign_omp*_*.csv (atribuições de cluster)"
+echo "  - centroids_omp*_*.csv (centróides finais)"
+echo ""
+echo "Para análise detalhada, execute:"
+echo "  python3 analyze_results.py"

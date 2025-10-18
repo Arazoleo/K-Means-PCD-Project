@@ -1,0 +1,335 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[portuguese]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{multirow}
+\usepackage{array}
+
+\geometry{a4paper, margin=2.5cm}
+
+\title{\textbf{Relatório de Implementação} \\ 
+K-Means 1D com Paralelização OpenMP}
+\author{Seu Nome}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Este relatório apresenta a implementação e análise de desempenho do algoritmo K-means unidimensional com paralelização OpenMP. O trabalho inclui uma versão serial baseline e uma versão paralela utilizando OpenMP, testadas em três datasets de diferentes tamanhos. Os resultados demonstram speedups significativos para datasets grandes, com melhor desempenho utilizando 8 threads.
+\end{abstract}
+
+\section{Introdução}
+
+O algoritmo K-means é um método de agrupamento amplamente utilizado para mineração de dados. Este trabalho implementa o K-means para dados unidimensionais, com duas versões:
+
+\begin{itemize}
+    \item \textbf{Serial:} Implementação sequencial baseline
+    \item \textbf{OpenMP:} Implementação paralela com memória compartilhada
+\end{itemize}
+
+O objetivo é avaliar o ganho de desempenho obtido através da paralelização OpenMP em diferentes tamanhos de dataset.
+
+\section{Metodologia}
+
+\subsection{Ambiente de Teste}
+
+\begin{itemize}
+    \item \textbf{Sistema Operacional:} macOS (darwin25)
+    \item \textbf{Processador:} 8 cores disponíveis
+    \item \textbf{Compilador:} GCC 15 com flags -O2
+    \item \textbf{Linguagem:} C (padrão C99)
+\end{itemize}
+
+\subsection{Datasets}
+
+Três datasets foram gerados com distribuição normal e seed fixa (42) para reprodutibilidade:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Dataset} & \textbf{N (pontos)} & \textbf{K (clusters)} & \textbf{Tamanho} \\
+\midrule
+Pequeno & 10.000 & 4 & 95 KB \\
+Médio & 100.000 & 8 & 940 KB \\
+Grande & 1.000.000 & 16 & 9,1 MB \\
+\bottomrule
+\end{tabular}
+\caption{Características dos datasets utilizados}
+\end{table}
+
+\subsection{Algoritmo}
+
+O algoritmo K-means foi implementado com os seguintes passos:
+
+\begin{enumerate}
+    \item \textbf{Assignment:} Para cada ponto, encontrar o centróide mais próximo usando distância Euclidiana ao quadrado
+    \item \textbf{Update:} Calcular a média dos pontos de cada cluster para atualizar os centróides
+    \item \textbf{Convergência:} Parar quando atingir máximo de iterações (50) ou variação relativa do SSE $< 10^{-6}$
+\end{enumerate}
+
+\subsection{Paralelização OpenMP}
+
+\begin{itemize}
+    \item \textbf{Assignment Step:} Paralelizado com \texttt{\#pragma omp parallel for reduction(+:sse)}
+    \item \textbf{Update Step:} Acumuladores locais por thread com redução em região crítica
+    \item \textbf{Configurações testadas:} 1, 2, 4, 8 e 16 threads
+\end{itemize}
+
+\section{Resultados}
+
+\subsection{Dataset Pequeno (N=10.000, K=4)}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Versão} & \textbf{Tempo (ms)} & \textbf{SSE} & \textbf{Iterações} & \textbf{Speedup} \\
+\midrule
+Serial & 1,6 & 61203,757 & 12 & 1,00x \\
+OpenMP (1t) & 4,8 & 61203,757 & 12 & 0,33x \\
+OpenMP (2t) & 1,4 & 61203,757 & 12 & 1,14x \\
+OpenMP (4t) & 1,8 & 61203,757 & 12 & 0,89x \\
+OpenMP (8t) & 2,6 & 61203,757 & 12 & 0,62x \\
+OpenMP (16t) & 3,5 & 61203,757 & 12 & 0,46x \\
+\bottomrule
+\end{tabular}
+\caption{Resultados para dataset pequeno}
+\end{table}
+
+\subsection{Dataset Médio (N=100.000, K=8)}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Versão} & \textbf{Tempo (ms)} & \textbf{SSE} & \textbf{Iterações} & \textbf{Speedup} \\
+\midrule
+Serial & 96,2 & 80284,877 & 50 & 1,00x \\
+OpenMP (1t) & 105,4 & 80284,877 & 50 & 0,91x \\
+OpenMP (2t) & 52,3 & 80284,877 & 50 & 1,84x \\
+OpenMP (4t) & 40,6 & 80284,877 & 50 & 2,37x \\
+OpenMP (8t) & 30,5 & 80284,877 & 50 & \textbf{3,15x} \\
+OpenMP (16t) & 35,6 & 80284,877 & 50 & 2,70x \\
+\bottomrule
+\end{tabular}
+\caption{Resultados para dataset médio}
+\end{table}
+
+\subsection{Dataset Grande (N=1.000.000, K=16)}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Versão} & \textbf{Tempo (ms)} & \textbf{SSE} & \textbf{Iterações} & \textbf{Speedup} \\
+\midrule
+Serial & 1265,2 & 171354,461 & 50 & 1,00x \\
+OpenMP (1t) & 1279,1 & 171354,461 & 50 & 0,99x \\
+OpenMP (2t) & 677,2 & 171354,461 & 50 & 1,87x \\
+OpenMP (4t) & 389,1 & 171354,461 & 50 & 3,25x \\
+OpenMP (8t) & 269,1 & 171354,461 & 50 & \textbf{4,70x} \\
+OpenMP (16t) & 289,3 & 171354,461 & 50 & 4,37x \\
+\bottomrule
+\end{tabular}
+\caption{Resultados para dataset grande}
+\end{table}
+
+\subsection{Análise de Speedup}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Threads} & \textbf{Pequeno} & \textbf{Médio} & \textbf{Grande} \\
+\midrule
+1 & 0,33x & 0,91x & 0,99x \\
+2 & 1,14x & 1,84x & 1,87x \\
+4 & 0,89x & 2,37x & 3,25x \\
+8 & 0,62x & 3,15x & 4,70x \\
+16 & 0,46x & 2,70x & 4,37x \\
+\bottomrule
+\end{tabular}
+\caption{Speedup em relação à versão serial}
+\end{table}
+
+\subsection{Eficiência Paralela}
+
+A eficiência paralela é calculada como: $E = \frac{Speedup}{N_{threads}}$
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Threads} & \textbf{Pequeno} & \textbf{Médio} & \textbf{Grande} \\
+\midrule
+2 & 57,0\% & 92,0\% & 93,5\% \\
+4 & 22,3\% & 59,3\% & 81,3\% \\
+8 & 7,8\% & 39,4\% & 58,8\% \\
+16 & 2,9\% & 16,9\% & 27,3\% \\
+\bottomrule
+\end{tabular}
+\caption{Eficiência paralela por configuração}
+\end{table}
+
+\section{Gráficos}
+
+\subsection{Tempo de Execução}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.9\textwidth}{\centering
+\vspace{8cm}
+Inserir gráfico: Tempo de Execução vs. Número de Threads \\
+(3 linhas: pequeno, médio, grande)
+}}
+\caption{Tempo de execução em função do número de threads}
+\end{figure}
+
+\subsection{Speedup}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.9\textwidth}{\centering
+\vspace{8cm}
+Inserir gráfico: Speedup vs. Número de Threads \\
+(4 linhas: pequeno, médio, grande, ideal)
+}}
+\caption{Speedup obtido comparado ao speedup ideal}
+\end{figure}
+
+\subsection{Eficiência Paralela}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.9\textwidth}{\centering
+\vspace{8cm}
+Inserir gráfico: Eficiência vs. Número de Threads \\
+(3 linhas: pequeno, médio, grande)
+}}
+\caption{Eficiência paralela em função do número de threads}
+\end{figure}
+
+\section{Discussão}
+
+\subsection{Validação de Corretude}
+
+O SSE (Sum of Squared Errors) foi idêntico em todas as execuções para cada dataset:
+\begin{itemize}
+    \item Dataset Pequeno: 61203,757
+    \item Dataset Médio: 80284,877
+    \item Dataset Grande: 171354,461
+\end{itemize}
+
+Isso confirma que a implementação paralela está \textbf{correta} e produz os mesmos resultados que a versão serial.
+
+\subsection{Dataset Pequeno}
+
+Para o dataset pequeno (N=10.000), a paralelização não apresentou ganhos:
+\begin{itemize}
+    \item Melhor tempo: 1,4 ms com 2 threads (speedup de apenas 1,14x)
+    \item O overhead de criação e sincronização de threads supera o ganho computacional
+    \item Recomendação: usar versão serial
+\end{itemize}
+
+\subsection{Dataset Médio}
+
+Para o dataset médio (N=100.000), observou-se escalabilidade positiva:
+\begin{itemize}
+    \item Melhor configuração: 8 threads com speedup de 3,15x
+    \item Redução de tempo de 96,2 ms para 30,5 ms
+    \item Eficiência de 39,4\% com 8 threads
+\end{itemize}
+
+\subsection{Dataset Grande}
+
+Para o dataset grande (N=1.000.000), obteve-se o melhor desempenho:
+\begin{itemize}
+    \item Melhor configuração: 8 threads com speedup de 4,70x
+    \item Redução de tempo de 1265,2 ms para 269,1 ms
+    \item Eficiência de 58,8\% com 8 threads
+    \item Boa escalabilidade até 8 threads
+\end{itemize}
+
+\subsection{Overhead do OpenMP}
+
+Observou-se que OpenMP com 1 thread é consistentemente mais lento que a versão serial:
+\begin{itemize}
+    \item Pequeno: 4,8 ms vs 1,6 ms (3x mais lento)
+    \item Médio: 105,4 ms vs 96,2 ms
+    \item Grande: 1279,1 ms vs 1265,2 ms
+\end{itemize}
+
+Isso evidencia o overhead da infraestrutura OpenMP sem benefício da paralelização.
+
+\subsection{Lei dos Retornos Decrescentes}
+
+A partir de 8 threads, observa-se degradação ou estabilização do desempenho:
+\begin{itemize}
+    \item 16 threads foi pior que 8 threads nos datasets médio e grande
+    \item Possíveis causas: contenção por recursos, hyperthreading, overhead de sincronização
+    \item A seção crítica no update step limita a escalabilidade
+\end{itemize}
+
+\section{Conclusões}
+
+\subsection{Principais Resultados}
+
+\begin{enumerate}
+    \item A implementação OpenMP está correta (SSE idêntico ao serial)
+    \item Speedup máximo de 4,70x no dataset grande com 8 threads
+    \item Paralelização não é vantajosa para datasets pequenos
+    \item Sweet spot: 8 threads para máquinas com 8 cores
+\end{enumerate}
+
+\subsection{Recomendações por Dataset}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Dataset} & \textbf{Configuração} & \textbf{Motivo} \\
+\midrule
+Pequeno (N<50K) & Serial & Overhead > ganho \\
+Médio (N=100K) & 8 threads & Speedup 3,15x \\
+Grande (N≥1M) & 8 threads & Speedup 4,70x \\
+\bottomrule
+\end{tabular}
+\caption{Configuração recomendada por tamanho de dataset}
+\end{table}
+
+\subsection{Gargalos Identificados}
+
+\begin{itemize}
+    \item \textbf{Update Step:} Região crítica (\texttt{\#pragma omp critical}) cria contenção
+    \item \textbf{Overhead:} Criação e sincronização de threads
+    \item \textbf{Hyperthreading:} 16 threads excede cores físicos (8), causando degradação
+\end{itemize}
+
+\subsection{Trabalhos Futuros}
+
+\begin{itemize}
+    \item Implementar versão CUDA para GPU
+    \item Implementar versão MPI para computação distribuída
+    \item Otimizar o update step para reduzir contenção
+    \item Testar schedule dinâmico vs estático
+    \item Avaliar K-means multidimensional
+\end{itemize}
+
+\section{Referências}
+
+\begin{itemize}
+    \item OpenMP Architecture Review Board. OpenMP Application Programming Interface Version 5.2, 2021.
+    \item Lloyd, S. Least squares quantization in PCM. IEEE Transactions on Information Theory, 1982.
+    \item Chapman, B., Jost, G., van der Pas, R. Using OpenMP: Portable Shared Memory Parallel Programming. MIT Press, 2007.
+\end{itemize}
+
+\end{document}
+

@@ -2,7 +2,7 @@
 *.csv
 
 # Executável
-kmeans_1d_omp
+kmeans_1d_serial
 
 # Imagens
 *.png
@@ -10,3 +10,4 @@ kmeans_1d_omp
 # Arquivos objeto
 *.o
 *.out
+

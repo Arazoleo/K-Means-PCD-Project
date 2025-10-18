@@ -81,8 +81,6 @@ static double assignment_step_1d(const double *X, const double *C, int *assign, 
     return sse;
 }
 
-/* update: média dos pontos de cada cluster (1D)
-   se cluster vazio, copia X[0] (estratégia naive) */
 static void update_step_1d(const double *X, double *C, const int *assign, int N, int K){
     double *sum = (double*)calloc((size_t)K, sizeof(double));
     int *cnt = (int*)calloc((size_t)K, sizeof(int));
@@ -95,7 +93,7 @@ static void update_step_1d(const double *X, double *C, const int *assign, int N,
     }
     for(int c=0;c<K;c++){
         if(cnt[c] > 0) C[c] = sum[c] / (double)cnt[c];
-        else           C[c] = X[0]; /* simples: cluster vazio recebe o primeiro ponto */
+        else           C[c] = X[0];
     }
     free(sum); free(cnt);
 }
@@ -109,7 +107,6 @@ static void kmeans_1d(const double *X, double *C, int *assign,
     int it;
     for(it=0; it<max_iter; it++){
         sse = assignment_step_1d(X, C, assign, N, K);
-        /* parada por variação relativa do SSE */
         double rel = fabs(sse - prev_sse) / (prev_sse > 0.0 ? prev_sse : 1.0);
         if(rel < eps){ it++; break; }
         update_step_1d(X, C, assign, N, K);
@@ -119,7 +116,6 @@ static void kmeans_1d(const double *X, double *C, int *assign,
     *sse_out = sse;
 }
 
-/* ---------- main ---------- */
 int main(int argc, char **argv){
     if(argc < 3){
         printf("Uso: %s dados.csv centroides_iniciais.csv [max_iter=50] [eps=1e-4] [assign.csv] [centroids.csv]\n", argv[0]);
