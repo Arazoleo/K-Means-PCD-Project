@@ -24,13 +24,13 @@ K-Means-PCD-Project/
 ## Requisitos
 
 - GCC com suporte a OpenMP
-- Python 3 com numpy e matplotlib
+- Python 3 com numpy, matplotlib e seaborn
 
 ### Instalação no macOS
 
 ```bash
 brew install gcc python3
-pip3 install numpy matplotlib
+pip3 install numpy matplotlib seaborn
 ```
 
 ### Instalação no Linux
