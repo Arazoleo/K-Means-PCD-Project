@@ -1,20 +1,9 @@
-/* kmeans_1d_serial.c
-   K-means 1D (C99), implementação sequencial (baseline):
-   - Lê X (N linhas, 1 coluna) e C_init (K linhas, 1 coluna) de CSVs sem cabeçalho.
-   - Itera assignment + update até max_iter ou variação relativa do SSE < eps.
-   - Salva (opcional) assign (N linhas) e centróides finais (K linhas).
-
-   Compilar: gcc -O2 -std=c99 kmeans_1d_serial.c -o kmeans_1d_serial -lm
-   Uso:      ./kmeans_1d_serial dados.csv centroides_iniciais.csv [max_iter=50] [eps=1e-4] [assign.csv] [centroids.csv]
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
 
-/* ---------- util CSV 1D: cada linha tem 1 número ---------- */
 static int count_rows(const char *path){
     FILE *f = fopen(path, "r");
     if(!f){ fprintf(stderr,"Erro ao abrir %s\n", path); exit(1); }
@@ -48,7 +37,6 @@ static double *read_csv_1col(const char *path, int *n_out){
         }
         if(only_ws) continue;
 
-        /* aceita vírgula/ponto-e-vírgula/espaco/tab, pega o primeiro token numérico */
         const char *delim = ",; \t";
         char *tok = strtok(line, delim);
         if(!tok){ fprintf(stderr,"Linha %d sem valor em %s\n", r+1, path); free(A); fclose(f); exit(1); }
@@ -77,8 +65,6 @@ static void write_centroids_csv(const char *path, const double *C, int K){
     fclose(f);
 }
 
-/* ---------- k-means 1D ---------- */
-/* assignment: para cada X[i], encontra c com menor (X[i]-C[c])^2 */
 static double assignment_step_1d(const double *X, const double *C, int *assign, int N, int K){
     double sse = 0.0;
     for(int i=0;i<N;i++){

@@ -1,55 +1,93 @@
 #!/usr/bin/env python3
 
 import numpy as np
-import sys
+import os
 
-def generate_dataset(n_points, n_clusters, output_file, seed=42):
-    np.random.seed(seed)
-    cluster_centers = np.linspace(10, 100, n_clusters)
-    points_per_cluster = n_points // n_clusters
-    remaining = n_points % n_clusters
-    all_points = []
+def generate_dataset(n_points, filename_prefix):
+    """
+    Gera datasets de dados e centroides para testes do K-means
     
-    for i, center in enumerate(cluster_centers):
-        n = points_per_cluster + (1 if i < remaining else 0)
-        cluster_points = np.random.normal(center, 2.0, n)
-        all_points.extend(cluster_points)
+    Args:
+        n_points: Número de pontos de dados
+        filename_prefix: Prefixo para os nomes dos arquivos (ex: 'pequeno', 'medio', 'grande')
+    """
     
-    np.random.shuffle(all_points)
+    print(f"Gerando dataset {filename_prefix} com {n_points:,} pontos...")
     
-    with open(output_file, 'w') as f:
-        for point in all_points:
-            f.write(f"{point:.6f}\n")
+    # Gerar dados aleatórios com distribuição normal
+    np.random.seed(42)  # Para reprodutibilidade
     
-    print(f"Dataset gerado: {output_file}")
-    print(f"  - Pontos: {n_points}")
-    print(f"  - Clusters: {n_clusters}")
-    print(f"  - Centros teóricos: {cluster_centers}")
+    # Criar clusters artificiais
+    cluster_centers = np.array([-5, -2, 0, 2, 5])
+    cluster_std = 0.8
+    
+    data = []
+    for center in cluster_centers:
+        cluster_data = np.random.normal(center, cluster_std, n_points // len(cluster_centers))
+        data.extend(cluster_data)
+    
+    # Adicionar pontos extras se necessário
+    remaining = n_points - len(data)
+    if remaining > 0:
+        extra_data = np.random.normal(0, 2, remaining)
+        data.extend(extra_data)
+    
+    # Embaralhar os dados
+    data = np.array(data)
+    np.random.shuffle(data)
+    
+    # Salvar dados
+    dados_filename = f"dados_{filename_prefix}.csv"
+    np.savetxt(dados_filename, data, delimiter=',', fmt='%.6f')
+    print(f"✓ Dados salvos em: {dados_filename}")
+    
+    # Gerar centroides iniciais aleatórios
+    centroides_filename = f"centroides_{filename_prefix}.csv"
+    initial_centroids = np.random.uniform(data.min(), data.max(), 5)
+    np.savetxt(centroides_filename, initial_centroids, delimiter=',', fmt='%.6f')
+    print(f"✓ Centroides salvos em: {centroides_filename}")
+    
+    return dados_filename, centroides_filename
 
-def generate_initial_centroids(n_clusters, output_file):
-    centroids = np.linspace(15, 95, n_clusters)
+def main():
+    """
+    Gera todos os datasets necessários para os testes
+    """
+    print("=" * 60)
+    print("GERADOR DE DATASETS PARA K-MEANS")
+    print("=" * 60)
     
-    with open(output_file, 'w') as f:
-        for centroid in centroids:
-            f.write(f"{centroid:.6f}\n")
+    # Verificar se estamos no diretório correto
+    if not os.path.exists('run_tests.sh'):
+        print("ERRO: Execute este script dentro da pasta openMp/")
+        return
     
-    print(f"Centróides iniciais gerados: {output_file}")
-    print(f"  - Valores: {centroids}")
+    # Definir tamanhos dos datasets
+    datasets = {
+        'pequeno': 10000,
+        'medio': 100000, 
+        'grande': 1000000
+    }
+    
+    print(f"Gerando datasets na pasta atual: {os.getcwd()}")
+    print()
+    
+    generated_files = []
+    
+    for name, size in datasets.items():
+        dados_file, centroides_file = generate_dataset(size, name)
+        generated_files.extend([dados_file, centroides_file])
+        print()
+    
+    print("=" * 60)
+    print("DATASETS GERADOS COM SUCESSO!")
+    print("=" * 60)
+    print("Arquivos criados:")
+    for file in generated_files:
+        print(f"  - {file}")
+    
+    print()
+    print("Agora você pode executar: bash run_tests.sh")
 
 if __name__ == "__main__":
-    print("=== Gerando dataset PEQUENO ===")
-    generate_dataset(10000, 4, "dados_pequeno.csv")
-    generate_initial_centroids(4, "centroides_pequeno.csv")
-    print()
-    
-    print("=== Gerando dataset MÉDIO ===")
-    generate_dataset(100000, 8, "dados_medio.csv")
-    generate_initial_centroids(8, "centroides_medio.csv")
-    print()
-    
-    print("=== Gerando dataset GRANDE ===")
-    generate_dataset(1000000, 16, "dados_grande.csv")
-    generate_initial_centroids(16, "centroides_grande.csv")
-    print()
-    
-    print("Todos os datasets foram gerados com sucesso!")
+    main()
