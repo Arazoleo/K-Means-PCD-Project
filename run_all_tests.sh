@@ -180,8 +180,5 @@ echo "  - serial/assign_serial_*.csv"
 echo "  - serial/centroids_serial_*.csv"
 echo "  - openmp/assign_omp*_*.csv"
 echo "  - openmp/centroids_omp*_*.csv"
-echo ""
-echo "Para análise detalhada:"
-echo "  cd serial && python3 analyze_results.py"
-echo "  cd openmp && python3 analyze_results.py"
+
 

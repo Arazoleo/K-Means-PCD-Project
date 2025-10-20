@@ -102,6 +102,13 @@ cd openmp
 gcc -O2 -fopenmp -std=c99 method_means_1d_omp.c -o kmeans_1d_omp -lm
 ```
 
+### OpenMP com Schedule Runtime
+
+```bash
+cd openmp
+gcc -O2 -fopenmp -std=c99 method_means_1d_omp_schedule.c -o kmeans_schedule -lm
+```
+
 ## Formato dos Arquivos
 
 Todos os CSV têm uma coluna, sem cabeçalho.
@@ -140,4 +147,33 @@ Clusters vazios recebem o primeiro ponto.
 
 - Assignment: `#pragma omp parallel for reduction(+:sse)`
 - Update: acumuladores locais por thread com redução crítica
+
+### Testes de Schedule e Chunk Size
+
+Teste diferentes políticas de escalonamento:
+
+```bash
+cd openmp
+bash test_schedule.sh
+```
+
+Este script testa automaticamente:
+- Threads: 1, 2, 4, 8, 16
+- Schedules: static(1000, 10000), dynamic(1000), guided
+- Dataset: grande (N=1M, K=16)
+
+Execução manual com configuração específica:
+```bash
+cd openmp
+export OMP_NUM_THREADS=8
+export OMP_SCHEDULE="dynamic,1000"
+./kmeans_schedule dados_grande.csv centroides_grande.csv 50 0.000001
+```
+
+Configurações de schedule disponíveis:
+- `static` ou `static,chunk_size`
+- `dynamic` ou `dynamic,chunk_size`
+- `guided` ou `guided,chunk_size`
+
+Consulte `openmp/README_SCHEDULE.md` para detalhes.
 

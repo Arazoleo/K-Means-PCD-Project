@@ -1,8 +1,10 @@
 # Arquivos CSV (dados e resultados)
 *.csv
+!schedule_results.txt
 
-# Executável
+# Executáveis
 kmeans_1d_omp
+kmeans_schedule
 
 # Imagens
 *.png
