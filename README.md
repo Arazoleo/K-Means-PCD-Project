@@ -19,8 +19,6 @@ K-Means-PCD-Project/
     ├── analyze_results.py
     ├── run_tests.sh
     └── README.md
-```
-
 ## Requisitos
 
 - GCC com suporte a OpenMP
