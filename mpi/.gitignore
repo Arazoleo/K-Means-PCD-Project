@@ -1,0 +1,15 @@
+# Arquivos CSV (dados e resultados)
+*.csv
+
+# Executável
+kmeans_1d_mpi
+
+# Imagens
+*.png
+
+# Arquivos objeto
+*.o
+*.out
+
+
+

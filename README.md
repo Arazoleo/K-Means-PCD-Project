@@ -1,6 +1,6 @@
-# K-Means 1D - Implementação Serial e OpenMP
+# K-Means 1D - Implementação Serial, OpenMP e MPI
 
-Implementação do algoritmo K-means unidimensional com versões serial e paralela OpenMP.
+Implementação do algoritmo K-means unidimensional com versões serial, paralela OpenMP (memória compartilhada) e distribuída MPI.
 
 ## Estrutura do Projeto
 
@@ -14,8 +14,13 @@ K-Means-PCD-Project/
 │   ├── analyze_results.py
 │   ├── run_tests.sh
 │   └── README.md
-└── openmp/
-    ├── method_means_1d_omp.c
+├── openmp/
+│   ├── method_means_1d_omp.c
+│   ├── analyze_results.py
+│   ├── run_tests.sh
+│   └── README.md
+└── mpi/
+    ├── method_means_1d_mpi.c
     ├── analyze_results.py
     ├── run_tests.sh
     └── README.md
@@ -24,20 +29,21 @@ K-Means-PCD-Project/
 ## Requisitos
 
 - GCC com suporte a OpenMP
+- MPI (OpenMPI ou MPICH) - apenas para versão MPI
 - Python 3 com numpy, matplotlib e seaborn
 
 ### Instalação no macOS
 
 ```bash
-brew install gcc python3
+brew install gcc openmpi python3
 pip3 install numpy matplotlib seaborn
 ```
 
 ### Instalação no Linux
 
 ```bash
-sudo apt-get install gcc python3 python3-pip
-pip3 install numpy matplotlib
+sudo apt-get install gcc libopenmpi-dev python3 python3-pip
+pip3 install numpy matplotlib seaborn
 ```
 
 ## Como Executar
@@ -109,6 +115,13 @@ cd openmp
 gcc -O2 -fopenmp -std=c99 method_means_1d_omp_schedule.c -o kmeans_schedule -lm
 ```
 
+### MPI
+
+```bash
+cd mpi
+mpicc -O2 -std=c99 method_means_1d_mpi.c -o kmeans_1d_mpi -lm
+```
+
 ## Formato dos Arquivos
 
 Todos os CSV têm uma coluna, sem cabeçalho.
@@ -175,5 +188,47 @@ Configurações de schedule disponíveis:
 - `dynamic` ou `dynamic,chunk_size`
 - `guided` ou `guided,chunk_size`
 
-Consulte `openmp/README_SCHEDULE.md` para detalhes.
+Consulte `openmp/README.md` para detalhes.
+
+## Paralelização MPI
+
+Implementação distribuída usando Message Passing Interface (MPI).
+
+### Arquitetura
+
+- **Distribuição de dados:** Processo 0 lê e distribui os N pontos entre P processos usando `MPI_Scatterv`
+- **Broadcast:** Todos os processos recebem os centróides C via `MPI_Bcast`
+- **Assignment local:** Cada processo calcula `assign_local` e `SSE_local` para seus pontos
+- **Redução global:**
+  - `MPI_Reduce` para somar `SSE_local → SSE_global` (apenas processo 0)
+  - `MPI_Allreduce` para somar `sum_local[c]` e `cnt_local[c]` (todos os processos)
+- **Update global:** Todos os processos atualizam C com os resultados globais
+
+### Execução
+
+```bash
+cd mpi
+bash run_tests.sh
+python3 analyze_results.py
+```
+
+Este script testa automaticamente:
+- Pequeno: 1, 2, 4 processos
+- Médio: 1, 2, 4, 8 processos
+- Grande: 1, 2, 4, 8, 16 processos
+
+Execução manual:
+```bash
+cd mpi
+mpirun -np 4 ./kmeans_1d_mpi dados_grande.csv centroides_grande.csv 50 0.000001
+```
+
+### Medições
+
+- **Strong scaling:** P ∈ {1, 2, 4, 8, 16} processos
+- **Tempo de comunicação:** Overhead de `MPI_Allreduce` (2 por iteração)
+- **Speedup:** Comparação com versão serial e OpenMP
+- **Eficiência paralela:** Avaliação do overhead de comunicação
+
+Consulte `mpi/README.md` para detalhes completos.
 
