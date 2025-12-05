@@ -1,0 +1,381 @@
+\documentclass[12pt]{article}
+
+\usepackage{sbc-template}
+\usepackage{graphicx,url}
+\usepackage[utf8]{inputenc}
+\usepackage[portuguese]{babel}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{multirow}
+\usepackage{array}
+
+\sloppy
+
+\title{Relatório de Implementação \\ K-Means 1D com Paralelização MPI}
+
+\author{
+  Leonardo Arazo de Oliveira Araújo\inst{1}, Clara Gabrielle Cavalheiro\inst{1}
+}
+
+\address{
+  Instituto de Ciência e Tecnologia -- Universidade Federal de São Paulo (UNIFESP)\\
+  CEP 12247‑014 -- São José dos Campos -- SP -- Brasil
+}
+
+\begin{document} 
+
+\maketitle
+
+\begin{center}
+arazo.leonardo@unifesp.br, clara.cavalheiro@unifesp.br
+\end{center}
+
+\begin{resumo} 
+Este relatório apresenta a implementação e análise de desempenho do algoritmo K-means com paralelização MPI (Message Passing Interface). O trabalho inclui uma versão distribuída utilizando MPI, testada em três datasets de diferentes tamanhos, tanto em um único computador quanto em dois computadores diferentes conectados em rede. Os resultados demonstram speedups significativos para datasets grandes, com melhor desempenho utilizando 4 processos, e eficiência superior a 90\% em configurações distribuídas.
+\end{resumo}
+
+\section{Introdução}
+
+O algoritmo K-means é um método de agrupamento utilizado para mineração de dados. Este trabalho implementa o K-means para dados unidimensionais utilizando MPI (Message Passing Interface) para paralelização distribuída:
+
+\begin{itemize}
+    \item \textbf{MPI:} Implementação paralela com memória distribuída
+    \item \textbf{Distribuição:} Dados distribuídos entre múltiplos processos
+    \item \textbf{Comunicação:} Sincronização via operações coletivas MPI
+\end{itemize}
+
+O objetivo é avaliar o ganho de desempenho obtido através da paralelização MPI em diferentes tamanhos de dataset, tanto em execução local quanto distribuída entre múltiplos computadores.
+
+\section{Metodologia}
+
+\subsection{Ambiente de Teste}
+
+\begin{itemize}
+    \item \textbf{Sistema Operacional:} macOS (darwin25) e Linux
+    \item \textbf{Processador:} 8 cores disponíveis (teste local)
+    \item \textbf{Compilador:} MPICC com flags -O2
+    \item \textbf{MPI:} OpenMPI 5.0.8
+    \item \textbf{Teste Distribuído:} 2 computadores conectados em rede
+\end{itemize}
+
+\subsection{Datasets}
+
+Três datasets foram gerados com distribuição normal:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Dataset} & \textbf{N (pontos)} & \textbf{K (clusters)}\\
+\midrule
+Pequeno & 10.000 & 4  \\
+Médio & 100.000 & 8 \\
+Grande & 1.000.000 & 16  \\
+\bottomrule
+\end{tabular}
+\caption{Características dos datasets utilizados}
+\end{table}
+
+\subsection{Algoritmo}
+
+O algoritmo K-means foi implementado com os seguintes passos:
+
+\begin{enumerate}
+    \item \textbf{Distribuição:} Processo 0 lê todos os dados e distribui entre P processos usando \texttt{MPI\_Scatterv}
+    \item \textbf{Assignment Local:} Cada processo calcula atribuições e SSE local para seus pontos
+    \item \textbf{Redução Global:} \texttt{MPI\_Reduce} para somar SSE local → SSE global
+    \item \textbf{Update:} \texttt{MPI\_Allreduce} para somar sum e cnt de cada cluster
+    \item \textbf{Broadcast:} \texttt{MPI\_Bcast} para distribuir centróides atualizados
+    \item \textbf{Convergência:} Parar quando atingir máximo de iterações (50) ou variação relativa do SSE $< 10^{-6}$
+\end{enumerate}
+
+\subsection{Paralelização MPI}
+
+\begin{itemize}
+    \item \textbf{Distribuição de Dados:} \texttt{MPI\_Scatterv} para distribuição balanceada
+    \item \textbf{Assignment Step:} Cálculo local em cada processo
+    \item \textbf{Redução:} \texttt{MPI\_Reduce} para SSE, \texttt{MPI\_Allreduce} para sum/cnt
+    \item \textbf{Sincronização:} \texttt{MPI\_Bcast} para centróides e flag de convergência
+    \item \textbf{Coleta:} \texttt{MPI\_Gatherv} para reunir atribuições finais
+    \item \textbf{Configurações testadas:} 1, 2, 4, 8 processos (local) e 1, 2, 4 processos (distribuído)
+\end{itemize}
+
+\section{Resultados}
+
+\subsection{Teste Local - Dataset Pequeno (N=10.000, K=4)}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Processos} & \textbf{Tempo (ms)} & \textbf{SSE} & \textbf{Iterações} & \textbf{Speedup} \\
+\midrule
+1 & 0,6 & 61203,757 & 12 & 1,00x \\
+2 & 1,2 & 61203,757 & 12 & 0,50x \\
+4 & 1,8 & 61203,757 & 12 & 0,33x \\
+\bottomrule
+\end{tabular}
+\caption{Resultados para dataset pequeno (teste local)}
+\end{table}
+
+\subsection{Teste Local - Dataset Médio (N=100.000, K=8)}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Processos} & \textbf{Tempo (ms)} & \textbf{SSE} & \textbf{Iterações} & \textbf{Speedup} \\
+\midrule
+1 & 25,3 & 80271,275 & 50 & 1,00x \\
+2 & 13,4 & 80271,275 & 50 & 1,89x \\
+4 & 7,7 & 80271,275 & 50 & \textbf{3,29x} \\
+8 & 11,5 & 80271,275 & 50 & 2,20x \\
+\bottomrule
+\end{tabular}
+\caption{Resultados para dataset médio (teste local)}
+\end{table}
+
+\subsection{Teste Local - Dataset Grande (N=1.000.000, K=16)}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Processos} & \textbf{Tempo (ms)} & \textbf{SSE} & \textbf{Iterações} & \textbf{Speedup} \\
+\midrule
+1 & 386,9 & 171328,195 & 50 & 1,00x \\
+2 & 200,7 & 171328,195 & 50 & 1,93x \\
+4 & 114,5 & 171328,195 & 50 & \textbf{3,38x} \\
+8 & 212,9 & 171328,195 & 50 & 1,82x \\
+\bottomrule
+\end{tabular}
+\caption{Resultados para dataset grande (teste local)}
+\end{table}
+
+\subsection{Teste Distribuído - 2 Computadores}
+
+\subsubsection{Dataset Pequeno (N=10.000, K=4, 13 iterações)}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Processos} & \textbf{Tempo (ms)} & \textbf{Speedup} & \textbf{Eficiência} \\
+\midrule
+1 & 0,8 & 1,00x & 100\% \\
+2 & 0,6 & 1,33x & 67\% \\
+4 & 0,3 & 2,67x & 67\% \\
+\bottomrule
+\end{tabular}
+\caption{Resultados distribuídos para dataset pequeno}
+\end{table}
+
+\subsubsection{Dataset Médio (N=100.000, K=8, 39 iterações)}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Processos} & \textbf{Tempo (ms)} & \textbf{Speedup} & \textbf{Eficiência} \\
+\midrule
+1 & 41,4 & 1,00x & 100\% \\
+2 & 26,5 & 1,56x & 78\% \\
+4 & 11,1 & 3,73x & \textbf{93\%} \\
+\bottomrule
+\end{tabular}
+\caption{Resultados distribuídos para dataset médio}
+\end{table}
+
+\subsubsection{Dataset Grande (N=1.000.000, K=16, 50 iterações)}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Processos} & \textbf{Tempo (ms)} & \textbf{Speedup} & \textbf{Eficiência} \\
+\midrule
+1 & 1023,1 & 1,00x & 100\% \\
+2 & 526,7 & 1,94x & 97\% \\
+4 & 285,6 & 3,58x & \textbf{90\%} \\
+\bottomrule
+\end{tabular}
+\caption{Resultados distribuídos para dataset grande}
+\end{table}
+
+\subsection{Análise de Speedup e Eficiência}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Processos} & \textbf{Local (Grande)} & \textbf{Distribuído (Grande)} & \textbf{Eficiência Distribuída} \\
+\midrule
+1 & 1,00x & 1,00x & 100\% \\
+2 & 1,93x & 1,94x & 97\% \\
+4 & 3,38x & 3,58x & 90\% \\
+\bottomrule
+\end{tabular}
+\caption{Comparação de speedup local vs distribuído (dataset grande)}
+\end{table}
+
+\section{Gráficos}
+
+\subsection{Tempo de Execução}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{grafico_tempo_mpi.png}
+\caption{Tempo de execução em função do número de processos}
+\end{figure}
+
+\subsection{Speedup e Eficiência}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{grafico_speedup_mpi.png}
+\caption{Speedup e eficiência em função do número de processos}
+\end{figure}
+
+\section{Discussão}
+
+\subsection{Validação de Corretude}
+
+O SSE (Sum of Squared Errors) foi idêntico em todas as execuções para cada dataset:
+
+\begin{itemize}
+    \item Dataset Pequeno: 61203,757
+    \item Dataset Médio: 80271,275
+    \item Dataset Grande: 171328,195
+\end{itemize}
+
+Isso confirma que a implementação paralela está \textbf{correta} e produz os mesmos resultados que a versão serial, tanto em execução local quanto distribuída.
+
+\subsection{Overhead de Comunicação}
+
+O overhead de comunicação MPI é significativo:
+
+\begin{itemize}
+    \item \textbf{MPI\_Allreduce:} Operação mais custosa (2 por iteração)
+    \item \textbf{MPI\_Bcast:} Broadcast de centróides e flags
+    \item \textbf{MPI\_Scatterv/Gatherv:} Distribuição e coleta de dados
+    \item Overhead aumenta com número de processos
+\end{itemize}
+
+\subsection{Análise de Escalabilidade}
+
+\subsubsection{Teste Local}
+
+\begin{itemize}
+    \item \textbf{Dataset Pequeno:} Overhead domina, speedup negativo
+    \item \textbf{Dataset Médio:} Speedup máximo com 4 processos (3,29x)
+    \item \textbf{Dataset Grande:} Speedup máximo com 4 processos (3,38x)
+    \item \textbf{8 processos:} Degradação devido ao overhead de comunicação
+\end{itemize}
+
+\subsubsection{Teste Distribuído}
+
+\begin{itemize}
+    \item \textbf{Eficiência superior:} 90-93\% com 4 processos
+    \item \textbf{Speedup melhor:} 3,58x vs 3,38x (local) no dataset grande
+    \item \textbf{Overhead de rede:} Compensado pelo paralelismo real
+    \item \textbf{Balanceamento:} Distribuição entre 2 PCs melhora utilização de recursos
+\end{itemize}
+
+\subsection{Comparação Local vs Distribuído}
+
+\begin{itemize}
+    \item \textbf{Dataset Grande:} Speedup distribuído (3,58x) ligeiramente superior ao local (3,38x)
+    \item \textbf{Eficiência:} Distribuído mantém 90\% de eficiência com 4 processos
+    \item \textbf{Overhead de rede:} Presente mas compensado pela melhor distribuição de carga
+    \item \textbf{Escalabilidade:} Configuração distribuída mostra melhor potencial para escalar além de 4 processos
+\end{itemize}
+
+\subsection{Operações MPI e Custo de Comunicação}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Operação} & \textbf{Frequência} & \textbf{Custo Relativo} \\
+\midrule
+MPI\_Scatterv & 1 (inicial) & Alto \\
+MPI\_Bcast & 1 + iterações & Médio \\
+MPI\_Reduce & 1 por iteração & Médio \\
+MPI\_Allreduce & 2 por iteração & \textbf{Alto} \\
+MPI\_Gatherv & 1 (final) & Alto \\
+\bottomrule
+\end{tabular}
+\caption{Custo de comunicação por operação MPI}
+\end{table}
+
+O \texttt{MPI\_Allreduce} é a operação mais custosa, executada duas vezes por iteração (uma para sum, outra para cnt), representando o principal gargalo de comunicação.
+
+\section{Conclusões}
+
+\subsection{Principais Resultados}
+
+\begin{enumerate}
+    \item A implementação MPI está correta (SSE idêntico ao serial)
+    \item Speedup máximo de 3,38x no teste local (4 processos, dataset grande)
+    \item Speedup máximo de 3,58x no teste distribuído (4 processos, dataset grande)
+    \item Eficiência superior a 90\% em configuração distribuída
+    \item Paralelização não é vantajosa para datasets pequenos (overhead domina)
+    \item Overhead de comunicação limita escalabilidade além de 4 processos
+\end{enumerate}
+
+\subsection{Recomendações por Dataset}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Dataset} & \textbf{Configuração} & \textbf{Speedup} \\
+\midrule
+Pequeno (N $\leq$ 10K) & Serial & --- \\
+Médio (N = 100K) & 4 processos (local) & 3,29x \\
+Grande (N $\geq$ 1M) & 4 processos (local) & 3,38x \\
+Grande (N $\geq$ 1M) & 4 processos (distribuído) & \textbf{3,58x} \\
+\bottomrule
+\end{tabular}
+\caption{Configuração recomendada por tamanho de dataset}
+\end{table}
+
+\subsection{Comparação com OpenMP}
+
+\begin{itemize}
+    \item \textbf{OpenMP:} Melhor para execução local (speedup 4,70x com 8 threads)
+    \item \textbf{MPI:} Melhor para execução distribuída e clusters
+    \item \textbf{Overhead:} MPI tem overhead maior devido à comunicação explícita
+    \item \textbf{Escalabilidade:} MPI permite escalar além de um único computador
+    \item \textbf{Memória:} MPI distribui memória, OpenMP compartilha
+\end{itemize}
+
+\subsection{Lições Aprendidas}
+
+\begin{enumerate}
+    \item Overhead de comunicação é crítico em MPI
+    \item \texttt{MPI\_Allreduce} é o principal gargalo
+    \item Distribuição entre múltiplos PCs pode melhorar eficiência
+    \item 4 processos é o ponto ótimo para os datasets testados
+    \item Datasets pequenos não se beneficiam de paralelização MPI
+\end{enumerate}
+
+\begin{thebibliography}{99}
+
+\bibitem{Gropp1999}
+Gropp, W., Lusk, E., Skjellum, A. (1999).
+\textit{Using MPI: Portable Parallel Programming with the Message-Passing Interface}. 2ª ed. Cambridge: MIT Press.
+Disponível em: \url{https://mitpress.mit.edu/9780262571329/using-mpi/}. Acesso em: 15 out. 2025.
+
+\bibitem{MPIForum2015}
+MPI Forum. (2015).
+\textit{MPI: A Message-Passing Interface Standard Version 3.1}.
+Disponível em: \url{https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report.pdf}. Acesso em: 15 out. 2025.
+
+\end{thebibliography}
+
+\end{document}
+

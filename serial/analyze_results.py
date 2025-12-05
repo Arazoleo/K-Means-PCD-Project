@@ -117,7 +117,7 @@ def create_performance_charts(results):
         ax2.text(bar.get_x() + bar.get_width()/2., height,
                 f'{int(iter_val)}',
                 ha='center', va='bottom', fontweight='bold')
-    
+
     plt.tight_layout()
     plt.savefig('performance_analysis_serial.png', dpi=300, bbox_inches='tight')
     print("Gráfico salvo: performance_analysis_serial.png")
